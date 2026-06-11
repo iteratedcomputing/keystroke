@@ -53,8 +53,8 @@ header {
 }
 
 .logo {
-  width: 21px;
-  height: 21px;
+  width: 32px;
+  height: auto;
 }
 
 .version {
