@@ -1,0 +1,27 @@
+{
+  "name": "keystroke",
+  "version": "0.1.0",
+  "description": "timer-boxed writing app that publishes via a hook when time runs out",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "format": "prettier --write ."
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iteratedcomputing/keystroke.git"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/iteratedcomputing/keystroke#readme",
+  "dependencies": {
+    "marked": "^18.0.5"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.4"
+  }
+}
