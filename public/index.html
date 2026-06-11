@@ -4,8 +4,71 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>keystroke</title>
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <p>keystroke — ui coming soon</p>
+    <header>
+      <div class="wordmark">
+        keystroke<span class="version" id="version"></span>
+      </div>
+      <div class="timer" id="timer" hidden>--:--</div>
+      <div class="actions">
+        <button class="ghost" id="preview-toggle" hidden>preview</button>
+        <button class="ghost" id="ship-now" hidden>ship now</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="screen-setup" hidden>
+        <h1>no hook, no words</h1>
+        <p>
+          keystroke refuses to let you write until it knows where your post goes
+          when time runs out. point it at an executable:
+        </p>
+        <pre id="setup-snippet"></pre>
+        <p class="dim">
+          the hook receives the markdown file path as <code>$1</code>, plus
+          <code>KEYSTROKE_TITLE</code>, <code>KEYSTROKE_SLUG</code>, and
+          <code>KEYSTROKE_DURATION_MINUTES</code>. exit 0 means published.
+        </p>
+        <button class="primary" id="recheck">check again</button>
+      </section>
+
+      <section id="screen-select" hidden>
+        <h1>how long do you have?</h1>
+        <p class="dim">
+          when the clock hits zero, your post ships. no extensions.
+        </p>
+        <div class="durations" id="durations"></div>
+      </section>
+
+      <section id="screen-write" hidden>
+        <input
+          id="title"
+          type="text"
+          placeholder="title"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="panes" id="panes">
+          <textarea
+            id="editor"
+            placeholder="start typing. the clock is running."
+            spellcheck="true"
+          ></textarea>
+          <article class="preview" id="preview" hidden></article>
+        </div>
+        <footer><span id="word-count">0 words</span></footer>
+      </section>
+
+      <section id="screen-done" hidden>
+        <h1 id="done-heading"></h1>
+        <p id="done-message"></p>
+        <pre id="done-output" hidden></pre>
+        <button class="primary" id="write-again">write again</button>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
   </body>
 </html>
