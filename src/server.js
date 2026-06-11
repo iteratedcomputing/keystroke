@@ -133,7 +133,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(
       status.configured
         ? `hook: ${hook}`
-        : `hook not configured (${status.reason}): create an executable at ${hook} or set KEYSTROKE_HOOK`,
+        : `hook not configured (${status.reason}): create an executable at ${hook}, set KEYSTROKE_HOOK, or run \`make demo\` to try the bundled word-count hook`,
     );
   });
 }

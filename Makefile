@@ -1,4 +1,4 @@
-.PHONY: format test build dev
+.PHONY: format test build dev demo
 
 format:
 	npx prettier --write .
@@ -11,3 +11,6 @@ build:
 
 dev:
 	node src/server.js
+
+demo:
+	KEYSTROKE_HOOK=hooks/wordcount.sh node src/server.js
