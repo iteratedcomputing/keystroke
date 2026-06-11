@@ -43,10 +43,18 @@ header {
 }
 
 .wordmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-family: var(--mono);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+
+.logo {
+  width: 21px;
+  height: 21px;
 }
 
 .version {
