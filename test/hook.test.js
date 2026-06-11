@@ -85,6 +85,18 @@ test("runHook reports a failing hook", async () => {
   assert.equal(result.stderr.trim(), "boom");
 });
 
+test("bundled wordcount hook counts words without publishing", async () => {
+  const filePath = await writeDraft({
+    title: "Demo",
+    content: "one two three\n",
+  });
+  const hookPath = path.resolve("hooks/wordcount.sh");
+  const result = await runHook(hookPath, filePath);
+  assert.equal(result.ok, true);
+  assert.match(result.stdout, /counted 3 words/);
+  assert.match(result.stdout, /nothing was published/);
+});
+
 test("runHook times out long-running hooks", async () => {
   const hookPath = makeHook("sleep 5");
   const result = await runHook(hookPath, "/tmp/post.md", {

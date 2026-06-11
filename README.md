@@ -27,7 +27,14 @@ npm install
 
 ## run
 
-create a hook (any executable works):
+just trying it out? start with the bundled word-count hook, which counts
+your words and publishes nothing:
+
+```sh
+make demo
+```
+
+for real use, create a hook (any executable works):
 
 ```sh
 cp hooks/example.sh hook
@@ -58,4 +65,5 @@ make format   # prettier
 make test     # node --test
 make build    # no-op, nothing to compile
 make dev      # run the server
+make demo     # run the server with the bundled word-count hook
 ```

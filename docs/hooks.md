@@ -55,6 +55,12 @@ gh pr merge --squash --delete-branch
 echo "published $post"
 ```
 
+## the demo hook
+
+`make demo` starts the server with `hooks/wordcount.sh`, a bundled hook that
+counts the words in your post and publishes nothing. it exists so you can
+feel the timer before wiring up a real destination.
+
 ## testing a hook
 
 run it by hand before trusting it with a deadline:
