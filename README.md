@@ -1,3 +1,5 @@
+<img src="public/logo.svg" width="56" alt="keystroke logo" />
+
 # keystroke
 
 a timer-boxed writing app. pick how long you have, write in markdown, and
@@ -14,6 +16,28 @@ extensions, no drafts rotting in a folder. the deadline is the editor.
 
 the hook is required. keystroke will not let you write without one, because a
 post with nowhere to go is just a draft.
+
+## screens
+
+the gate. no hook, no words:
+
+![setup screen](docs/screenshots/setup.png)
+
+pick your deadline:
+
+![duration select](docs/screenshots/select.png)
+
+write. the clock is always in view:
+
+![editor](docs/screenshots/write.png)
+
+optional side-by-side markdown preview:
+
+![split preview](docs/screenshots/preview.png)
+
+at zero (or on ship now), the hook runs and you see what it did:
+
+![shipped](docs/screenshots/done.png)
 
 ## install
 
