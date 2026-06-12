@@ -44,10 +44,11 @@ your words and publishes nothing:
 make demo
 ```
 
-for real use, create a hook (any executable works):
+for real use, create a hook (any executable works). start from the
+word-count example and overwrite it with your own publishing logic:
 
 ```sh
-cp hooks/example.sh hook
+cp hooks/wordcount.sh hook
 chmod +x hook
 ```
 
@@ -57,8 +58,9 @@ then start the app and open http://localhost:7777:
 make dev
 ```
 
-set `KEYSTROKE_HOOK` to use a hook outside the repo, and `PORT` to change the
-port.
+your hook stays yours: `./hook` and `hooks/local/` are gitignored, so
+personal hooks never end up in the repo. set `KEYSTROKE_HOOK` to use hooks
+anywhere else, and `PORT` to change the port.
 
 ## the hook
 

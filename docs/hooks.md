@@ -9,6 +9,9 @@ keystroke looks for hooks at `$KEYSTROKE_HOOK`, falling back to `./hook`
 relative to where the server was started. every file must exist and be
 executable, otherwise the ui refuses to let you write.
 
+`./hook` and `hooks/local/` are gitignored — keep personal hooks there (or
+anywhere outside the repo) and they will never be committed.
+
 ## chaining
 
 `KEYSTROKE_HOOK` takes colon-separated paths, run sequentially:
