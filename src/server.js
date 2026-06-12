@@ -2,7 +2,7 @@ import http from "node:http";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { hookStatus, resolveHookPath, runHook, writeDraft } from "./hook.js";
+import { hooksStatus, resolveHookPaths, runHooks, writeDraft } from "./hook.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -61,7 +61,7 @@ function serveStatic(res, publicDir, urlPath) {
 }
 
 export function createApp({
-  hookPath,
+  hookPaths,
   publicDir = PUBLIC_DIR,
   env = process.env,
 } = {}) {
@@ -72,20 +72,20 @@ export function createApp({
     const urlPath = decodeURIComponent(
       new URL(req.url, "http://localhost").pathname,
     );
-    const hook = hookPath || resolveHookPath(env);
+    const hooks = hookPaths || resolveHookPaths(env);
 
     if (req.method === "GET" && urlPath === "/api/status") {
-      sendJson(res, 200, {
-        version: VERSION,
-        hook: { path: hook, ...hookStatus(hook) },
-      });
+      sendJson(res, 200, { version: VERSION, hook: hooksStatus(hooks) });
       return;
     }
 
     if (req.method === "POST" && urlPath === "/api/submit") {
-      const status = hookStatus(hook);
+      const status = hooksStatus(hooks);
       if (!status.configured) {
-        sendJson(res, 409, { error: `hook not configured: ${status.reason}` });
+        const broken = status.hooks.filter((h) => !h.configured);
+        sendJson(res, 409, {
+          error: `hook not configured: ${broken.map((h) => `${h.path} (${h.reason})`).join(", ")}`,
+        });
         return;
       }
       let body;
@@ -101,7 +101,7 @@ export function createApp({
         return;
       }
       const filePath = await writeDraft({ title, content });
-      const result = await runHook(hook, filePath, {
+      const result = await runHooks(hooks, filePath, {
         title,
         durationMinutes,
         env,
@@ -126,14 +126,20 @@ export function createApp({
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 7777;
-  const hook = resolveHookPath();
-  const status = hookStatus(hook);
+  const status = hooksStatus(resolveHookPaths());
   createApp().listen(port, () => {
     console.log(`keystroke v${VERSION} on http://localhost:${port}`);
-    console.log(
-      status.configured
-        ? `hook: ${hook}`
-        : `hook not configured (${status.reason}): create an executable at ${hook}, set KEYSTROKE_HOOK, or run \`make demo\` to try the bundled word-count hook`,
-    );
+    for (const hook of status.hooks) {
+      console.log(
+        hook.configured
+          ? `hook: ${hook.path}`
+          : `hook not configured (${hook.reason}): ${hook.path}`,
+      );
+    }
+    if (!status.configured) {
+      console.log(
+        "create the executable, set KEYSTROKE_HOOK (colon-separated for multiple), or run `make demo` to try the bundled word-count hook",
+      );
+    }
   });
 }

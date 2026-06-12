@@ -21,17 +21,17 @@ function listen(app) {
 }
 
 test("status reports version and unconfigured hook", async (t) => {
-  const app = createApp({ hookPath: "/nonexistent/hook" });
+  const app = createApp({ hookPaths: ["/nonexistent/hook"] });
   t.after(() => app.close());
   const base = await listen(app);
   const body = await (await fetch(`${base}/api/status`)).json();
   assert.match(body.version, /^\d+\.\d+\.\d+$/);
   assert.equal(body.hook.configured, false);
-  assert.equal(body.hook.reason, "missing");
+  assert.equal(body.hook.hooks[0].reason, "missing");
 });
 
 test("status reports a configured hook", async (t) => {
-  const app = createApp({ hookPath: makeHook("exit 0") });
+  const app = createApp({ hookPaths: [makeHook("exit 0")] });
   t.after(() => app.close());
   const base = await listen(app);
   const body = await (await fetch(`${base}/api/status`)).json();
@@ -39,7 +39,7 @@ test("status reports a configured hook", async (t) => {
 });
 
 test("submit is rejected when no hook is configured", async (t) => {
-  const app = createApp({ hookPath: "/nonexistent/hook" });
+  const app = createApp({ hookPaths: ["/nonexistent/hook"] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/api/submit`, {
@@ -50,7 +50,7 @@ test("submit is rejected when no hook is configured", async (t) => {
 });
 
 test("submit rejects empty content", async (t) => {
-  const app = createApp({ hookPath: makeHook("exit 0") });
+  const app = createApp({ hookPaths: [makeHook("exit 0")] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/api/submit`, {
@@ -61,7 +61,7 @@ test("submit rejects empty content", async (t) => {
 });
 
 test("submit rejects invalid json", async (t) => {
-  const app = createApp({ hookPath: makeHook("exit 0") });
+  const app = createApp({ hookPaths: [makeHook("exit 0")] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/api/submit`, {
@@ -73,7 +73,7 @@ test("submit rejects invalid json", async (t) => {
 
 test("submit writes the draft and runs the hook", async (t) => {
   const hookPath = makeHook('cat "$1"\necho "published $KEYSTROKE_SLUG"');
-  const app = createApp({ hookPath });
+  const app = createApp({ hookPaths: [hookPath] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/api/submit`, {
@@ -89,11 +89,14 @@ test("submit writes the draft and runs the hook", async (t) => {
   assert.equal(body.ok, true);
   assert.match(body.file, /test-post\.md$/);
   assert.equal(await readFile(body.file, "utf8"), "# hello\n");
-  assert.equal(body.stdout, "# hello\npublished test-post\n");
+  assert.equal(body.hooks[0].stdout, "# hello\npublished test-post\n");
 });
 
-test("submit surfaces hook failure", async (t) => {
-  const app = createApp({ hookPath: makeHook('echo "no remote" >&2\nexit 1') });
+test("submit runs hooks in order and stops at the first failure", async (t) => {
+  const first = makeHook('echo "first ran"');
+  const second = makeHook('echo "second broke" >&2\nexit 1');
+  const third = makeHook('echo "never runs"');
+  const app = createApp({ hookPaths: [first, second, third] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/api/submit`, {
@@ -102,12 +105,45 @@ test("submit surfaces hook failure", async (t) => {
   });
   const body = await res.json();
   assert.equal(body.ok, false);
-  assert.equal(body.code, 1);
-  assert.equal(body.stderr.trim(), "no remote");
+  assert.equal(body.hooks.length, 3);
+  assert.equal(body.hooks[0].stdout, "first ran\n");
+  assert.equal(body.hooks[1].code, 1);
+  assert.deepEqual(body.hooks[2], { path: third, skipped: true });
+});
+
+test("submit is rejected when any hook in the chain is missing", async (t) => {
+  const app = createApp({
+    hookPaths: [makeHook("exit 0"), "/nonexistent/hook"],
+  });
+  t.after(() => app.close());
+  const base = await listen(app);
+  const res = await fetch(`${base}/api/submit`, {
+    method: "POST",
+    body: JSON.stringify({ content: "# hi" }),
+  });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.match(body.error, /\/nonexistent\/hook \(missing\)/);
+});
+
+test("submit surfaces hook failure", async (t) => {
+  const app = createApp({
+    hookPaths: [makeHook('echo "no remote" >&2\nexit 1')],
+  });
+  t.after(() => app.close());
+  const base = await listen(app);
+  const res = await fetch(`${base}/api/submit`, {
+    method: "POST",
+    body: JSON.stringify({ content: "# hi" }),
+  });
+  const body = await res.json();
+  assert.equal(body.ok, false);
+  assert.equal(body.hooks[0].code, 1);
+  assert.equal(body.hooks[0].stderr.trim(), "no remote");
 });
 
 test("serves the index page", async (t) => {
-  const app = createApp({ hookPath: makeHook("exit 0") });
+  const app = createApp({ hookPaths: [makeHook("exit 0")] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/`);
@@ -116,7 +152,7 @@ test("serves the index page", async (t) => {
 });
 
 test("serves the bundled markdown renderer", async (t) => {
-  const app = createApp({ hookPath: makeHook("exit 0") });
+  const app = createApp({ hookPaths: [makeHook("exit 0")] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/vendor/marked.esm.js`);
@@ -124,7 +160,7 @@ test("serves the bundled markdown renderer", async (t) => {
 });
 
 test("blocks path traversal", async (t) => {
-  const app = createApp({ hookPath: makeHook("exit 0") });
+  const app = createApp({ hookPaths: [makeHook("exit 0")] });
   t.after(() => app.close());
   const base = await listen(app);
   const res = await fetch(`${base}/%2e%2e/package.json`);

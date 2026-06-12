@@ -6,8 +6,11 @@ import path from "node:path";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
-export function resolveHookPath(env = process.env) {
-  return path.resolve(env.KEYSTROKE_HOOK || "./hook");
+export function resolveHookPaths(env = process.env) {
+  return (env.KEYSTROKE_HOOK || "./hook")
+    .split(":")
+    .filter(Boolean)
+    .map((p) => path.resolve(p));
 }
 
 export function hookStatus(hookPath) {
@@ -23,6 +26,11 @@ export function hookStatus(hookPath) {
     return { configured: false, reason: "not executable" };
   }
   return { configured: true };
+}
+
+export function hooksStatus(hookPaths) {
+  const hooks = hookPaths.map((p) => ({ path: p, ...hookStatus(p) }));
+  return { configured: hooks.every((h) => h.configured), hooks };
 }
 
 export function slugify(title) {
@@ -68,6 +76,7 @@ export function runHook(
             : null
           : 0;
         resolve({
+          path: hookPath,
           ok: !error,
           code,
           timedOut: Boolean(error && error.killed),
@@ -77,4 +86,19 @@ export function runHook(
       },
     );
   });
+}
+
+export async function runHooks(hookPaths, filePath, opts = {}) {
+  const results = [];
+  for (const [index, hookPath] of hookPaths.entries()) {
+    const result = await runHook(hookPath, filePath, opts);
+    results.push(result);
+    if (!result.ok) {
+      for (const skippedPath of hookPaths.slice(index + 1)) {
+        results.push({ path: skippedPath, skipped: true });
+      }
+      return { ok: false, hooks: results };
+    }
+  }
+  return { ok: true, hooks: results };
 }

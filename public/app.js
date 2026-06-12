@@ -49,8 +49,11 @@ function renderSetup(status) {
     "EOF",
     "chmod +x hook",
     "",
-    `# looked for: ${status.hook.path} (${status.hook.reason})`,
+    ...status.hook.hooks.map(
+      (h) => `# looked for: ${h.path} (${h.reason || "ok"})`,
+    ),
     "# or point elsewhere: export KEYSTROKE_HOOK=/path/to/hook",
+    "# chain hooks with colons: export KEYSTROKE_HOOK=./prepare:./publish",
   ].join("\n");
   show("setup");
 }
@@ -152,8 +155,16 @@ async function submit(reason) {
     });
     result = await res.json();
   } catch (error) {
-    result = { ok: false, stderr: String(error) };
+    result = { ok: false, error: String(error) };
   }
+
+  const output = (result.hooks ?? [])
+    .map((h) => {
+      if (h.skipped) return `$ ${h.path}\n(skipped)`;
+      const body = [h.stdout, h.stderr].filter(Boolean).join("").trim();
+      return `$ ${h.path}\n${body || "(no output)"}`;
+    })
+    .join("\n\n");
 
   if (result.ok) {
     clearSession();
@@ -161,16 +172,17 @@ async function submit(reason) {
       ok: true,
       heading: "shipped",
       message: `your post is out of your hands now. draft kept at ${result.file}.`,
-      output: result.stdout.trim(),
+      output,
     });
   } else {
+    const failed = (result.hooks ?? []).find((h) => !h.ok && !h.skipped);
     renderDone({
       ok: false,
-      heading: "hook failed",
+      heading: failed ? "hook failed" : "something broke",
       message: result.file
-        ? `your words are safe at ${result.file}. fix the hook and ship it by hand.`
+        ? `${failed.path} exited ${failed.timedOut ? "by timeout" : failed.code}. your words are safe at ${result.file}. fix the hook and ship it by hand.`
         : (result.error ?? "could not reach the server."),
-      output: [result.stdout, result.stderr].filter(Boolean).join("\n").trim(),
+      output,
     });
     clearSession();
   }
