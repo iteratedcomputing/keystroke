@@ -5,9 +5,22 @@ keystroke writes your post to a temp markdown file and runs the hook with it.
 
 ## resolution
 
-keystroke looks for the hook at `$KEYSTROKE_HOOK`, falling back to `./hook`
-relative to where the server was started. the file must exist and be
+keystroke looks for hooks at `$KEYSTROKE_HOOK`, falling back to `./hook`
+relative to where the server was started. every file must exist and be
 executable, otherwise the ui refuses to let you write.
+
+## chaining
+
+`KEYSTROKE_HOOK` takes colon-separated paths, run sequentially:
+
+```sh
+export KEYSTROKE_HOOK=./hooks/front-matter.sh:./hooks/publish.sh
+```
+
+each hook must exit 0 before the next one runs; on failure the rest are
+skipped and the ui shows which hook broke, with the output of everything
+that ran. all hooks receive the same file path, so earlier hooks can edit
+the post in place for later ones — add front matter first, publish second.
 
 ## contract
 

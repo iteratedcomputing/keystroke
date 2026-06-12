@@ -65,8 +65,17 @@ port.
 your hook receives the finished post as a markdown file path in `$1`, plus
 `KEYSTROKE_TITLE`, `KEYSTROKE_SLUG`, and `KEYSTROKE_DURATION_MINUTES` in the
 environment. exit 0 means published; anything else surfaces the failure in
-the ui with your draft path so nothing is lost. see [docs/hooks.md](docs/hooks.md)
-for the full contract and a publish-to-blog example.
+the ui with your draft path so nothing is lost.
+
+chain hooks by separating paths with colons. they run in order, and each
+must exit 0 before the next starts:
+
+```sh
+export KEYSTROKE_HOOK=./hooks/front-matter.sh:./hooks/publish.sh
+```
+
+see [docs/hooks.md](docs/hooks.md) for the full contract and a
+publish-to-blog example.
 
 ## development
 

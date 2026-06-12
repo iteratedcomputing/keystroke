@@ -6,8 +6,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   hookStatus,
-  resolveHookPath,
+  hooksStatus,
+  resolveHookPaths,
   runHook,
+  runHooks,
   slugify,
   writeDraft,
 } from "../src/hook.js";
@@ -20,15 +22,31 @@ function makeHook(script, { executable = true } = {}) {
   return hookPath;
 }
 
-test("resolveHookPath uses KEYSTROKE_HOOK when set", () => {
-  assert.equal(
-    resolveHookPath({ KEYSTROKE_HOOK: "/tmp/custom-hook" }),
+test("resolveHookPaths uses KEYSTROKE_HOOK when set", () => {
+  assert.deepEqual(resolveHookPaths({ KEYSTROKE_HOOK: "/tmp/custom-hook" }), [
     "/tmp/custom-hook",
+  ]);
+});
+
+test("resolveHookPaths splits colon-separated hooks in order", () => {
+  assert.deepEqual(
+    resolveHookPaths({ KEYSTROKE_HOOK: "/tmp/prepare::./publish" }),
+    ["/tmp/prepare", path.resolve("./publish")],
   );
 });
 
-test("resolveHookPath defaults to ./hook", () => {
-  assert.equal(resolveHookPath({}), path.resolve("./hook"));
+test("resolveHookPaths defaults to ./hook", () => {
+  assert.deepEqual(resolveHookPaths({}), [path.resolve("./hook")]);
+});
+
+test("hooksStatus requires every hook to be configured", () => {
+  const good = makeHook("exit 0");
+  const status = hooksStatus([good, "/nonexistent/hook"]);
+  assert.equal(status.configured, false);
+  assert.deepEqual(status.hooks, [
+    { path: good, configured: true },
+    { path: "/nonexistent/hook", configured: false, reason: "missing" },
+  ]);
 });
 
 test("hookStatus reports missing hook", () => {
@@ -95,6 +113,27 @@ test("bundled wordcount hook counts words without publishing", async () => {
   assert.equal(result.ok, true);
   assert.match(result.stdout, /counted 3 words/);
   assert.match(result.stdout, /nothing was published/);
+});
+
+test("runHooks runs sequentially and later hooks see earlier edits", async () => {
+  const filePath = await writeDraft({ title: "Chain", content: "body\n" });
+  const first = makeHook(
+    'echo "prepended" > "$1.tmp"\ncat "$1" >> "$1.tmp"\nmv "$1.tmp" "$1"',
+  );
+  const second = makeHook('cat "$1"');
+  const result = await runHooks([first, second], filePath);
+  assert.equal(result.ok, true);
+  assert.equal(result.hooks.length, 2);
+  assert.equal(result.hooks[1].stdout, "prepended\nbody\n");
+});
+
+test("runHooks stops at the first failure and skips the rest", async () => {
+  const first = makeHook('echo "nope" >&2\nexit 2');
+  const second = makeHook("exit 0");
+  const result = await runHooks([first, second], "/tmp/post.md");
+  assert.equal(result.ok, false);
+  assert.equal(result.hooks[0].code, 2);
+  assert.deepEqual(result.hooks[1], { path: second, skipped: true });
 });
 
 test("runHook times out long-running hooks", async () => {
