@@ -25,6 +25,22 @@ skipped and the ui shows which hook broke, with the output of everything
 that ran. all hooks receive the same file path, so earlier hooks can edit
 the post in place for later ones — add front matter first, publish second.
 
+## passing values
+
+`--x-` flags on the command line are forwarded to every hook as environment
+variables, so you can set per-run values without exporting anything:
+
+```sh
+node src/server.js --x-blog-tags=tech
+make dev ARGS="--x-blog-tags=tech"
+```
+
+the name after `--x-` is uppercased with dashes turned into underscores and
+prefixed with `KEYSTROKE_`, so `--x-blog-tags=tech` arrives as
+`KEYSTROKE_BLOG_TAGS=tech`. the value can also be space-separated
+(`--x-blog-tags tech`), and a bare flag (`--x-blog-dry-run`) is set to `1`.
+`make` consumes `--`-prefixed words itself, so route them through `ARGS`.
+
 ## contract
 
 | input                        | meaning                            |

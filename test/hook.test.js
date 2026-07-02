@@ -7,6 +7,7 @@ import path from "node:path";
 import {
   hookStatus,
   hooksStatus,
+  parseHookArgs,
   resolveHookPaths,
   runHook,
   runHooks,
@@ -37,6 +38,31 @@ test("resolveHookPaths splits colon-separated hooks in order", () => {
 
 test("resolveHookPaths defaults to ./hook", () => {
   assert.deepEqual(resolveHookPaths({}), [path.resolve("./hook")]);
+});
+
+test("parseHookArgs maps --x- flags to namespaced env vars", () => {
+  assert.deepEqual(parseHookArgs(["--x-blog-tags=tech"]), {
+    KEYSTROKE_BLOG_TAGS: "tech",
+  });
+});
+
+test("parseHookArgs accepts a space-separated value", () => {
+  assert.deepEqual(parseHookArgs(["--x-blog-tags", "tech"]), {
+    KEYSTROKE_BLOG_TAGS: "tech",
+  });
+});
+
+test("parseHookArgs treats a bare flag as 1", () => {
+  assert.deepEqual(parseHookArgs(["--x-blog-dry-run"]), {
+    KEYSTROKE_BLOG_DRY_RUN: "1",
+  });
+});
+
+test("parseHookArgs ignores unrelated args and keeps = in values", () => {
+  assert.deepEqual(parseHookArgs(["--port", "8080", "--x-msg=a=b"]), {
+    KEYSTROKE_MSG: "a=b",
+  });
+  assert.deepEqual(parseHookArgs([]), {});
 });
 
 test("hooksStatus requires every hook to be configured", () => {

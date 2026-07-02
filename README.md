@@ -79,6 +79,19 @@ must exit 0 before the next starts:
 export KEYSTROKE_HOOK=./hooks/front-matter.sh:./hooks/publish.sh
 ```
 
+pass per-run values to your hooks with `--x-` flags instead of exporting env
+vars. `--x-blog-tags=tech` becomes `KEYSTROKE_BLOG_TAGS=tech` in the hook
+environment (uppercased, dashes to underscores). a bare flag like
+`--x-blog-dry-run` is set to `1`:
+
+```sh
+node src/server.js --x-blog-tags=tech
+make dev ARGS="--x-blog-tags=tech"
+```
+
+`make` treats `--`-prefixed words as its own options, so pass them through
+the `ARGS` variable rather than `make dev --x-...`.
+
 see [docs/hooks.md](docs/hooks.md) for the full contract and a
 publish-to-blog example.
 

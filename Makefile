@@ -10,7 +10,7 @@ build:
 	@echo "nothing to build"
 
 dev:
-	node src/server.js
+	node src/server.js $(ARGS)
 
 demo:
 	KEYSTROKE_HOOK=hooks/wordcount.sh node src/server.js
