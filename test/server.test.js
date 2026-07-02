@@ -4,7 +4,7 @@ import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createApp } from "../src/server.js";
+import { browserOpener, createApp } from "../src/server.js";
 
 function makeHook(script) {
   const dir = mkdtempSync(path.join(tmpdir(), "keystroke-test-"));
@@ -165,4 +165,20 @@ test("blocks path traversal", async (t) => {
   const base = await listen(app);
   const res = await fetch(`${base}/%2e%2e/package.json`);
   assert.equal(res.status, 404);
+});
+
+test("browserOpener picks the right command per platform", () => {
+  const url = "http://localhost:7777";
+  assert.deepEqual(browserOpener("darwin", url), {
+    command: "open",
+    args: [url],
+  });
+  assert.deepEqual(browserOpener("linux", url), {
+    command: "xdg-open",
+    args: [url],
+  });
+  assert.deepEqual(browserOpener("win32", url), {
+    command: "cmd",
+    args: ["/c", "start", "", url],
+  });
 });
