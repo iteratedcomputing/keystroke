@@ -13,6 +13,33 @@ export function resolveHookPaths(env = process.env) {
     .map((p) => path.resolve(p));
 }
 
+export function parseHookArgs(argv = []) {
+  const env = {};
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i];
+    if (typeof token !== "string" || !token.startsWith("--x-")) continue;
+    const body = token.slice(4);
+    const eq = body.indexOf("=");
+    let key, value;
+    if (eq !== -1) {
+      key = body.slice(0, eq);
+      value = body.slice(eq + 1);
+    } else {
+      key = body;
+      const next = argv[i + 1];
+      if (next !== undefined && !next.startsWith("--")) {
+        value = next;
+        i++;
+      } else {
+        value = "1";
+      }
+    }
+    if (!key) continue;
+    env["KEYSTROKE_" + key.toUpperCase().replace(/-/g, "_")] = value;
+  }
+  return env;
+}
+
 export function hookStatus(hookPath) {
   if (!existsSync(hookPath)) {
     return { configured: false, reason: "missing" };

@@ -3,7 +3,13 @@ import { execFile } from "node:child_process";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { hooksStatus, resolveHookPaths, runHooks, writeDraft } from "./hook.js";
+import {
+  hooksStatus,
+  parseHookArgs,
+  resolveHookPaths,
+  runHooks,
+  writeDraft,
+} from "./hook.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -140,10 +146,12 @@ function openBrowser(url) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const hookArgs = parseHookArgs(process.argv.slice(2));
+  const env = { ...process.env, ...hookArgs };
   const port = Number(process.env.PORT) || 7777;
-  const status = hooksStatus(resolveHookPaths());
+  const status = hooksStatus(resolveHookPaths(env));
   const url = `http://localhost:${port}`;
-  createApp().listen(port, () => {
+  createApp({ env }).listen(port, () => {
     console.log(`keystroke v${VERSION} on ${url}`);
     for (const hook of status.hooks) {
       console.log(
@@ -151,6 +159,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           ? `hook: ${hook.path}`
           : `hook not configured (${hook.reason}): ${hook.path}`,
       );
+    }
+    for (const [name, value] of Object.entries(hookArgs)) {
+      console.log(`hook arg: ${name}=${value}`);
     }
     if (!status.configured) {
       console.log(

@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { browserOpener, createApp } from "../src/server.js";
+import { parseHookArgs } from "../src/hook.js";
 
 function makeHook(script) {
   const dir = mkdtempSync(path.join(tmpdir(), "keystroke-test-"));
@@ -165,6 +166,20 @@ test("blocks path traversal", async (t) => {
   const base = await listen(app);
   const res = await fetch(`${base}/%2e%2e/package.json`);
   assert.equal(res.status, 404);
+});
+
+test("cli hook args reach the hook environment", async (t) => {
+  const hook = makeHook('echo "tags=$KEYSTROKE_BLOG_TAGS"');
+  const env = { ...process.env, ...parseHookArgs(["--x-blog-tags=tech"]) };
+  const app = createApp({ hookPaths: [hook], env });
+  t.after(() => app.close());
+  const base = await listen(app);
+  const res = await fetch(`${base}/api/submit`, {
+    method: "POST",
+    body: JSON.stringify({ content: "# hi" }),
+  });
+  const body = await res.json();
+  assert.equal(body.hooks[0].stdout.trim(), "tags=tech");
 });
 
 test("browserOpener picks the right command per platform", () => {
