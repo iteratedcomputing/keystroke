@@ -52,11 +52,14 @@ cp hooks/wordcount.sh hook
 chmod +x hook
 ```
 
-then start the app and open http://localhost:7777:
+then start the app:
 
 ```sh
 make dev
 ```
+
+it opens http://localhost:7777 in your browser automatically. set
+`KEYSTROKE_OPEN=0` to skip that.
 
 your hook stays yours: `./hook` and `hooks/local/` are gitignored, so
 personal hooks never end up in the repo. set `KEYSTROKE_HOOK` to use hooks

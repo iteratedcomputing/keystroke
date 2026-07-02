@@ -1,4 +1,5 @@
 import http from "node:http";
+import { execFile } from "node:child_process";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -124,11 +125,26 @@ export function createApp({
   });
 }
 
+export function browserOpener(platform, url) {
+  if (platform === "darwin") return { command: "open", args: [url] };
+  if (platform === "win32")
+    return { command: "cmd", args: ["/c", "start", "", url] };
+  return { command: "xdg-open", args: [url] };
+}
+
+function openBrowser(url) {
+  const { command, args } = browserOpener(process.platform, url);
+  const child = execFile(command, args, () => {});
+  child.on("error", () => {});
+  child.unref();
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 7777;
   const status = hooksStatus(resolveHookPaths());
+  const url = `http://localhost:${port}`;
   createApp().listen(port, () => {
-    console.log(`keystroke v${VERSION} on http://localhost:${port}`);
+    console.log(`keystroke v${VERSION} on ${url}`);
     for (const hook of status.hooks) {
       console.log(
         hook.configured
@@ -140,6 +156,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(
         "create the executable, set KEYSTROKE_HOOK (colon-separated for multiple), or run `make demo` to try the bundled word-count hook",
       );
+    }
+    if (process.env.KEYSTROKE_OPEN !== "0") {
+      openBrowser(url);
     }
   });
 }
