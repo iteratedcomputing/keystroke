@@ -69,6 +69,23 @@ personal hooks never end up in the repo. set `KEYSTROKE_HOOK` to use hooks
 anywhere else, `KEYSTROKE_DRAFTS_DIR` to save somewhere other than
 `~/Documents/keystroke`, and `PORT` to change the port.
 
+## mac app
+
+keystroke also runs as a desktop app with its own window and dock icon. it
+starts the same server in the background (on port 7778) and quits it when you
+quit the app. requires the xcode command line tools.
+
+```sh
+make app          # builds build/Keystroke.app
+make install-app  # builds and copies it to ~/Applications
+```
+
+the app remembers this checkout's path and your node, so `./hook` and
+`hooks/local/` work the same as with `make dev`. rebuild after moving the
+repo or switching node versions. menu shortcuts: cmd+n new, cmd+s save,
+cmd+o show the drafts folder, cmd+p toggle preview. server output goes to
+`~/Library/Logs/keystroke.log`.
+
 ## the hook
 
 your hook receives the finished post as a markdown file path in `$1`, plus
@@ -107,4 +124,5 @@ make test     # node --test
 make build    # no-op, nothing to compile
 make dev      # run the server
 make demo     # run the server with the bundled word-count hook
+make app      # build the mac app
 ```
