@@ -269,13 +269,22 @@ function renderDone({ ok, heading, message, output }) {
   show("done");
 }
 
-$("preview-toggle").addEventListener("click", () => {
+function togglePreview() {
   const preview = $("preview");
   preview.hidden = !preview.hidden;
   $("panes").classList.toggle("split", !preview.hidden);
   $("preview-toggle").classList.toggle("active", !preview.hidden);
   updatePreview();
-});
+}
+
+$("preview-toggle").addEventListener("click", togglePreview);
+
+window.keystroke = {
+  save: () => !$("screen-write").hidden && !timed() && save(),
+  newPost: () => !$("screen-write").hidden && !timed() && newPost(),
+  togglePreview: () => !$("screen-write").hidden && togglePreview(),
+  draftsDir: () => status?.draftsDir,
+};
 
 $("ship-now").addEventListener("click", () => submit("manual"));
 $("publish").addEventListener("click", () => submit("manual"));
