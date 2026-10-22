@@ -197,3 +197,51 @@ test("browserOpener picks the right command per platform", () => {
     args: ["/c", "start", "", url],
   });
 });
+
+test("save writes the post to the drafts dir and reuses the file", async (t) => {
+  const draftsDir = mkdtempSync(path.join(tmpdir(), "keystroke-drafts-"));
+  const app = createApp({ hookPaths: ["/nonexistent/hook"], draftsDir });
+  t.after(() => app.close());
+  const base = await listen(app);
+  const save = async (body) =>
+    (
+      await fetch(`${base}/api/save`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+    ).json();
+  const first = await save({ title: "Notes", content: "one" });
+  assert.equal(path.dirname(first.file), draftsDir);
+  assert.match(first.file, /notes\.md$/);
+  const second = await save({
+    title: "Notes",
+    content: "two",
+    file: first.file,
+  });
+  assert.equal(second.file, first.file);
+  assert.equal(await readFile(first.file, "utf8"), "two");
+  const third = await save({ title: "Notes", content: "three" });
+  assert.match(third.file, /notes-2\.md$/);
+});
+
+test("save ignores a file outside the drafts dir", async (t) => {
+  const draftsDir = mkdtempSync(path.join(tmpdir(), "keystroke-drafts-"));
+  const app = createApp({ hookPaths: ["/nonexistent/hook"], draftsDir });
+  t.after(() => app.close());
+  const base = await listen(app);
+  const res = await fetch(`${base}/api/save`, {
+    method: "POST",
+    body: JSON.stringify({ content: "x", file: "/etc/passwd.md" }),
+  });
+  const body = await res.json();
+  assert.equal(path.dirname(body.file), draftsDir);
+});
+
+test("status reports the drafts dir", async (t) => {
+  const draftsDir = mkdtempSync(path.join(tmpdir(), "keystroke-drafts-"));
+  const app = createApp({ hookPaths: ["/nonexistent/hook"], draftsDir });
+  t.after(() => app.close());
+  const base = await listen(app);
+  const body = await (await fetch(`${base}/api/status`)).json();
+  assert.equal(body.draftsDir, draftsDir);
+});
