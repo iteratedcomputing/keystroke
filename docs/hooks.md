@@ -1,13 +1,13 @@
 # hooks
 
-a hook is any executable file. when the timer hits zero (or you ship early),
-keystroke writes your post to a temp markdown file and runs the hook with it.
+a hook is any executable file. when you press publish, the timer hits zero,
+or you ship early, keystroke writes your post to a temp markdown file and runs the hook with it.
 
 ## resolution
 
 keystroke looks for hooks at `$KEYSTROKE_HOOK`, falling back to `./hook`
 relative to where the server was started. every file must exist and be
-executable, otherwise the ui refuses to let you write.
+executable, otherwise the ui refuses to publish or start a timer.
 
 `./hook` and `hooks/local/` are gitignored — keep personal hooks there (or
 anywhere outside the repo) and they will never be committed.

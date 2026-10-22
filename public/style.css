@@ -315,6 +315,9 @@ code {
 }
 
 #screen-write footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
   padding: 10px 32px;
   border-top: 1px solid var(--border);
   font-family: var(--mono);
@@ -331,4 +334,15 @@ code {
 
 #done-heading.failed {
   color: var(--danger);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+#save-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -10,6 +10,7 @@ import {
   runHooks,
   writeDraft,
 } from "./hook.js";
+import { resolveDraftsDir, saveDraft } from "./drafts.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -71,6 +72,7 @@ export function createApp({
   hookPaths,
   publicDir = PUBLIC_DIR,
   env = process.env,
+  draftsDir = resolveDraftsDir(env),
 } = {}) {
   const resolvedPublicDir = path.resolve(publicDir);
   const markedDir = path.join(__dirname, "..", "node_modules", "marked", "lib");
@@ -82,7 +84,33 @@ export function createApp({
     const hooks = hookPaths || resolveHookPaths(env);
 
     if (req.method === "GET" && urlPath === "/api/status") {
-      sendJson(res, 200, { version: VERSION, hook: hooksStatus(hooks) });
+      sendJson(res, 200, {
+        version: VERSION,
+        hook: hooksStatus(hooks),
+        draftsDir,
+      });
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/api/save") {
+      let body;
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        sendJson(res, 400, { error: "invalid json body" });
+        return;
+      }
+      if (typeof body.content !== "string") {
+        sendJson(res, 400, { error: "content is required" });
+        return;
+      }
+      const file = await saveDraft({
+        dir: draftsDir,
+        title: body.title,
+        content: body.content,
+        file: body.file,
+      });
+      sendJson(res, 200, { file });
       return;
     }
 
