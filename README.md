@@ -2,20 +2,23 @@
 
 # keystroke
 
-a timer-boxed writing app. pick how long you have, write in markdown, and
-when the clock hits zero your post ships through a hook you provide. no
-extensions, no drafts rotting in a folder. the deadline is the editor.
+a markdown editor with an optional deadline. open it and write. when you
+want pressure, start a timer: pick how long you have, and when the clock hits
+zero your post ships through a hook you provide. no extensions.
 
 ## how it works
 
-1. you point keystroke at an executable (the hook)
-2. you pick a duration: 10, 15, 30, 45, or 60 minutes
-3. you write, with an optional live markdown preview
-4. at zero, keystroke writes your post to a markdown file and runs your hook
-   with it
+1. keystroke opens straight into a blank page with a live markdown preview
+2. `save` (cmd+s) writes the post to `~/Documents/keystroke` as
+   `YYYY-MM-DD-slug.md`; later saves update the same file. `new`
+   (cmd+shift+n) saves and starts a blank page
+3. `publish` runs your hook on the post right now
+4. `timer` picks a duration (10, 15, 30, 45, or 60 minutes) and starts the
+   clock on whatever you have so far. at zero, keystroke writes the post to a
+   markdown file and runs your hook with it
 
-the hook is required. keystroke will not let you write without one, because a
-post with nowhere to go is just a draft.
+the hook is only needed to publish or start a timer. a timer with nowhere to
+ship to is just a draft, so keystroke shows setup instructions instead.
 
 ## examples
 
@@ -63,7 +66,8 @@ it opens http://localhost:7777 in your browser automatically. set
 
 your hook stays yours: `./hook` and `hooks/local/` are gitignored, so
 personal hooks never end up in the repo. set `KEYSTROKE_HOOK` to use hooks
-anywhere else, and `PORT` to change the port.
+anywhere else, `KEYSTROKE_DRAFTS_DIR` to save somewhere other than
+`~/Documents/keystroke`, and `PORT` to change the port.
 
 ## the hook
 

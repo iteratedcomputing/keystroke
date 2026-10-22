@@ -6,18 +6,38 @@ const DURATIONS = [10, 15, 30, 45, 60];
 const $ = (id) => document.getElementById(id);
 const screens = ["setup", "select", "write", "done"];
 
+let status = null;
 let session = null;
 let ticker = null;
 let submitting = false;
+let dirty = false;
+
+function timed() {
+  return Boolean(session?.deadline);
+}
 
 function show(name) {
   for (const screen of screens) {
     $(`screen-${screen}`).hidden = screen !== name;
   }
   const writing = name === "write";
-  $("timer").hidden = !writing;
+  $("timer").hidden = !(writing && timed());
   $("preview-toggle").hidden = !writing;
-  $("ship-now").hidden = !writing;
+  $("ship-now").hidden = !(writing && timed());
+  for (const id of ["new-post", "save", "start-timer"]) {
+    $(id).hidden = !(writing && !timed());
+  }
+  $("publish").hidden = !(writing && !timed() && status?.hook.configured);
+}
+
+function blankSession() {
+  return {
+    deadline: null,
+    durationMinutes: null,
+    title: "",
+    content: "",
+    file: null,
+  };
 }
 
 function loadSession() {
@@ -32,16 +52,17 @@ function saveSession() {
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-function clearSession() {
-  session = null;
-  localStorage.removeItem(SESSION_KEY);
+function resetSession() {
+  session = blankSession();
+  dirty = false;
+  saveSession();
 }
 
 async function fetchStatus() {
   return (await fetch("/api/status")).json();
 }
 
-function renderSetup(status) {
+function renderSetup() {
   $("setup-snippet").textContent = [
     "cat > hook <<'EOF'",
     "#!/bin/sh",
@@ -64,34 +85,37 @@ function renderSelect() {
   for (const minutes of DURATIONS) {
     const button = document.createElement("button");
     button.innerHTML = `${minutes}<small>min</small>`;
-    button.addEventListener("click", () => startSession(minutes));
+    button.addEventListener("click", () => startTimer(minutes));
     container.append(button);
   }
   show("select");
 }
 
-function startSession(minutes) {
-  session = {
-    deadline: Date.now() + minutes * 60_000,
-    durationMinutes: minutes,
-    title: "",
-    content: "",
-  };
+function startTimer(minutes) {
+  session.deadline = Date.now() + minutes * 60_000;
+  session.durationMinutes = minutes;
   saveSession();
   renderWrite();
 }
 
 function renderWrite() {
+  clearInterval(ticker);
   $("title").value = session.title;
   $("editor").value = session.content;
   $("title").disabled = false;
   $("editor").disabled = false;
+  $("editor").placeholder = timed()
+    ? "start typing. the clock is running."
+    : "start typing.";
   updateWordCount();
   updatePreview();
+  updateSaveStatus();
   show("write");
   $("editor").focus();
-  tick();
-  ticker = setInterval(tick, 250);
+  if (timed()) {
+    tick();
+    ticker = setInterval(tick, 250);
+  }
 }
 
 function tick() {
@@ -119,6 +143,52 @@ function updatePreview() {
   }
 }
 
+function updateSaveStatus() {
+  const file = session.file;
+  $("save-status").textContent = file
+    ? `${dirty ? "edited since save" : "saved"} · ${file}`
+    : "";
+}
+
+async function save() {
+  if (!session.content.trim() && !session.title.trim()) return true;
+  try {
+    const res = await fetch("/api/save", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: session.title,
+        content: session.content,
+        file: session.file,
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    session.file = body.file;
+    dirty = false;
+    saveSession();
+    updateSaveStatus();
+    return true;
+  } catch (error) {
+    $("save-status").textContent = `save failed: ${error.message}`;
+    return false;
+  }
+}
+
+async function newPost() {
+  if (!(await save())) return;
+  resetSession();
+  renderWrite();
+}
+
+function requestTimer() {
+  if (!status.hook.configured) {
+    renderSetup();
+    return;
+  }
+  renderSelect();
+}
+
 async function submit(reason) {
   if (submitting) return;
   submitting = true;
@@ -128,7 +198,7 @@ async function submit(reason) {
 
   const { title, content, durationMinutes } = session;
   if (!content.trim()) {
-    clearSession();
+    resetSession();
     renderDone({
       ok: false,
       heading: "nothing to ship",
@@ -167,7 +237,7 @@ async function submit(reason) {
     .join("\n\n");
 
   if (result.ok) {
-    clearSession();
+    resetSession();
     renderDone({
       ok: true,
       heading: "shipped",
@@ -184,7 +254,7 @@ async function submit(reason) {
         : (result.error ?? "could not reach the server."),
       output,
     });
-    clearSession();
+    resetSession();
   }
   submitting = false;
 }
@@ -208,22 +278,34 @@ $("preview-toggle").addEventListener("click", () => {
 });
 
 $("ship-now").addEventListener("click", () => submit("manual"));
+$("publish").addEventListener("click", () => submit("manual"));
+$("save").addEventListener("click", save);
+$("new-post").addEventListener("click", newPost);
+$("start-timer").addEventListener("click", requestTimer);
+$("select-back").addEventListener("click", renderWrite);
+$("setup-back").addEventListener("click", renderWrite);
+$("write-again").addEventListener("click", () =>
+  session ? renderWrite() : location.reload(),
+);
 
-$("write-again").addEventListener("click", () => renderSelect());
-
-$("recheck").addEventListener("click", init);
-
-$("title").addEventListener("input", () => {
-  session.title = $("title").value;
-  saveSession();
+$("recheck").addEventListener("click", async () => {
+  status = await fetchStatus();
+  if (status.hook.configured) renderSelect();
+  else renderSetup();
 });
 
-$("editor").addEventListener("input", () => {
+function edited() {
+  session.title = $("title").value;
   session.content = $("editor").value;
+  dirty = true;
   saveSession();
   updateWordCount();
   updatePreview();
-});
+  updateSaveStatus();
+}
+
+$("title").addEventListener("input", edited);
+$("editor").addEventListener("input", edited);
 
 $("editor").addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
@@ -236,12 +318,24 @@ $("editor").addEventListener("keydown", (event) => {
   }
 });
 
+document.addEventListener("keydown", (event) => {
+  if (!event.metaKey && !event.ctrlKey) return;
+  if ($("screen-write").hidden || timed()) return;
+  const key = event.key.toLowerCase();
+  if (key === "s") {
+    event.preventDefault();
+    save();
+  } else if (key === "n" && event.shiftKey) {
+    event.preventDefault();
+    newPost();
+  }
+});
+
 window.addEventListener("beforeunload", (event) => {
-  if (session && !submitting) event.preventDefault();
+  if (timed() && !submitting) event.preventDefault();
 });
 
 async function init() {
-  let status;
   try {
     status = await fetchStatus();
   } catch {
@@ -253,16 +347,8 @@ async function init() {
     return;
   }
   $("version").textContent = `v${status.version}`;
-  if (!status.hook.configured) {
-    renderSetup(status);
-    return;
-  }
-  session = loadSession();
-  if (session) {
-    renderWrite();
-  } else {
-    renderSelect();
-  }
+  session = { ...blankSession(), ...(loadSession() ?? {}) };
+  renderWrite();
 }
 
 init();
